@@ -11,7 +11,6 @@ from .secrets import get_new_code_verifier
 
 class Route:
     BASE: ClassVar[str] = 'https://api.myanimelist.net/'
-    FIELDS: ClassVar[str] = 'id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,rank,popularity,num_list_users,num_scoring_users,nsfw,created_at,updated_at,media_type,status,genres,my_list_status,num_episodes,start_season,broadcast,source,average_episode_duration,rating,pictures,background,related_anime,related_manga,recommendations,studios,statistics'
     USER_AGENT: ClassVar[str] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11.0) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/11.0 Safari/602.1.50'
 
     def __init__(self, method: str, path: str, version: int = 2, **parameters: Any) -> None:
@@ -19,12 +18,6 @@ class Route:
         self.path = path
         self.version = version
         self.parameters = parameters
-        
-        try:
-            self.parameters.pop('fields')
-            self.parameters['fields'] = self.FIELDS
-        except KeyError:
-            pass
         
     @property
     def url(self) -> str:
@@ -51,6 +44,10 @@ class Route:
 
 
 class HTTPClient:
+    ANIME_FIELDS: ClassVar[str] = 'id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,rank,popularity,num_list_users,num_scoring_users,nsfw,created_at,updated_at,media_type,status,genres,my_list_status,num_episodes,start_season,broadcast,source,average_episode_duration,rating,pictures,background,related_anime,related_manga,recommendations,studios,statistics'
+    MANGA_FIELDS: ClassVar[str] = 'id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,rank,popularity,num_list_users,num_scoring_users,nsfw,created_at,updated_at,media_type,status,genres,my_list_status,num_volumes,num_chapters,authors{first_name,last_name},pictures,background,related_anime,related_manga,recommendations,serialization{name}'
+    USER_FIELDS: ClassVar[str] = 'id,name,picture,gender,birthday,location,joined_at,anime_statistics,time_zone,is_supporter'
+
     def __init__(self, client_id: str, client_secret: str) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
@@ -65,8 +62,6 @@ class HTTPClient:
         headers = route.headers
         method = route.method
         url = route.url
-
-        print(url)
 
         if self.session is None:
             self.session = aiohttp.ClientSession()
@@ -115,58 +110,211 @@ class HTTPClient:
         data = await self.request(route)
         return data['access_token'], data['refresh_token']
 
-    async def get_anime(self, query: str, limit: int = 100, offset: int = 0):
+    async def get_anime(self, access_token: str, query: str, limit: int = 100, offset: int = 0):
         route = Route(
             'GET',
             '/anime',
             q=query,
             limit=min(limit, 100),
             offset=offset,
-            fields=True,
+            fields=self.ANIME_FIELDS,
+            access_token=access_token
         )
 
         return await self.request(route)
 
-    async def get_anime_details(self, anime_id: int):
+    async def get_anime_details(self, access_token: str, anime_id: int):
         route = Route(
             'GET',
             f'/anime/{anime_id}',
-            fields=True
+            fields=self.ANIME_FIELDS,
+            access_token=access_token
         )
 
         return await self.request(route)
 
-    async def get_anime_ranking(self, ranking_type: str, limit: int = 100, offset: int = 0):
+    async def get_anime_ranking(self, access_token: str, ranking_type: str, limit: int = 100, offset: int = 0):
         route = Route(
             'GET',
             '/anime/ranking',
             ranking_type=ranking_type,
             limit=min(limit, 500),
             offset=offset,
-            fields=True
+            fields=self.ANIME_FIELDS,
+            access_token=access_token
         )
 
         return await self.request(route)
 
-    async def get_seasonal_anime(self, year: int, season: str, sort: str = 'anime_score', limit: int = 100, offset: int = 0):
+    async def get_seasonal_anime(self, access_token: str, year: int, season: str, sort: str = 'anime_score', limit: int = 100, offset: int = 0):
         route = Route(
             'GET',
             f'/anime/season/{year}/{season}',
             sort=sort,
             limit=min(limit, 500),
             offset=offset,
-            fields=True
+            fields=self.ANIME_FIELDS,
+            access_token=access_token
         )
 
         return await self.request(route)
 
-    async def get_suggested_anime(self, limit: int = 100, offset: int = 0):
+    async def get_suggested_anime(self, access_token: str, limit: int = 100, offset: int = 0):
         route = Route(
             'GET',
             '/anime/suggestions',
-            limit=limit,
+            limit=min(limit, 100),
             offset=offset,
-            fields=True
+            fields=self.ANIME_FIELDS,
+            access_token=access_token
+        )
+
+        return await self.request(route)
+
+    async def update_anime_list_status(self, access_token: str, anime_id: int, **parameters):
+        route = Route(
+            'PATCH',
+            f'/anime/{anime_id}/my_list_status',
+            access_token=access_token,
+            **parameters
+        )
+
+        return await self.request(route)
+
+    async def delete_anime_list_item(self, access_token: str, anime_id: int):
+        route = Route(
+            'DELETE',
+            f'/anime/{anime_id}/my_list_status',
+            access_token=access_token
+        )
+
+        return await self.request(route)
+
+    async def get_user_anime_list(self, access_token: str, user_name: str = '@me', status: Optional[str] = None, sort: str = 'list_score', limit: int = 100, offset: int = 0):
+        parameters = {
+            'sort': sort,
+            'limit': min(limit, 1000),
+            'offset': offset
+        }
+
+        if status:
+            parameters['status'] = status
+
+        route = Route(
+            'GET',
+            f'/users/{user_name}/animelist',
+            access_token=access_token,
+            **parameters
+        )
+
+        return await self.request(route)
+
+    async def get_forum_boards(self, access_token: str):
+        route = Route(
+            'GET',
+            '/forum/boards',
+            access_token=access_token
+        )
+
+        return await self.request(route)
+
+    async def get_forum_topic_detail(self, access_token: str, topic_id: int):
+        route = Route(
+            'GET',
+            f'/forum/topic/{topic_id}',
+            access_token=access_token
+        )
+
+        return await self.request(route)
+
+    async def get_forum_topics(self, access_token: str):
+        route = Route(
+            'GET',
+            '/forum/topics',
+            access_token=access_token
+        )
+
+        return await self.request(route)
+
+    async def get_manga_list(self, access_token: str, query: str, limit: int = 100, offset: int = 0):
+        route = Route(
+            'GET',
+            '/manga',
+            access_token=access_token,
+            query=query,
+            limit=min(100, limit),
+            fields=self.MANGA_FIELDS
+        )
+
+        return await self.request(route)
+
+    async def get_manga_details(self, access_token: str, manga_id: int):
+        route = Route(
+            'GET',
+            f'/manga/{manga_id}',
+            access_token=access_token,
+            fields=self.MANGA_FIELDS
+        )
+
+        return await self.request(route)
+
+    async def get_manga_ranking(self, access_token: str, ranking_type: str = 'all', limit: int = 100, offset: int = 0):
+        route = Route(
+            'GET',
+            '/manga/ranking',
+            access_token=access_token,
+            ranking_type=ranking_type,
+            limit=min(limit, 500),
+            offset=offset,
+            fields=self.MANGA_FIELDS
+        )
+
+        return await self.request(route)
+
+    async def update_manga_list_status(self, access_token: str, manga_id: int, **parameters):
+        route = Route(
+            'PATCH',
+            f'/manga/{manga_id}/my_list_status',
+            access_token=access_token,
+            **parameters
+        )
+
+        return await self.request(route)
+
+    async def delete_manga_list_item(self, access_token: str, manga_id: int):
+        route = Route(
+            'DELETE',
+            f'/manga/{manga_id}/my_list_status',
+            access_token=access_token
+        )
+
+        return await self.request(route)
+
+    async def get_user_manga_list(self, access_token: str, user_name: str = '@me', status: Optional[str] = None, sort: str = 'list_score', limit: int = 100, offset: int = 0):
+        parameters = {
+            'sort': sort,
+            'limit': min(limit, 1000),
+            'offset': offset
+        }
+
+        if status:
+            parameters['status'] = status
+
+        route = Route(
+            'GET',
+            f'/users/{user_name}/mangalist',
+            access_token=access_token,
+            **parameters
+        )
+
+        return await self.request(route)
+
+    async def get_user_information(self, access_token: str, user_name: str = '@me'):
+        route = Route(
+            'DELETE',
+            f'/user/{user_name}',
+            access_token=access_token,
+            fields=self.USER_FIELDS
         )
 
         return await self.request(route)
