@@ -1,5 +1,4 @@
 /.venv
 *.json
 main.py
-secrets.py
 __pycache__
