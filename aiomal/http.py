@@ -10,26 +10,32 @@ from .secrets import get_new_code_verifier
 
 
 class Route:
-    BASE: ClassVar[str] = 'https://api.myanimelist.net/'
+    V1_BASE: ClassVar[str] = 'https://myanimelist.net/v1'
+    V2_BASE: ClassVar[str] = 'https://api.myanimelist.net/v2'
     USER_AGENT: ClassVar[str] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11.0) AppleWebKit/602.1.50 (KHTML, like Gecko) Version/11.0 Safari/602.1.50'
 
-    def __init__(self, method: str, path: str, version: int = 2, **parameters: Any) -> None:
+    def __init__(self, method: str, path: str, version: int = 2, content_type='application/json', **parameters: Any) -> None:
         self.method = method
         self.path = path
         self.version = version
+        self.content_type = content_type
         self.parameters = parameters
         
     @property
     def url(self) -> str:
-        version = f'v{self.version}'
-        base = self.BASE + version
-        url = base + self.path + f'?{urlencode(self.parameters)}'
-        return url
+        if self.version == 1:
+            base = self.V1_BASE
+        else:
+            base = self.V2_BASE
+            
+        url = base + self.path
+        parameters = urlencode(self.parameters)
+        return '{}?{}'.format(url, parameters)
 
     @property
     def headers(self) -> Dict[str, str]:
         head = {
-            'Content-Type': 'application/json',
+            'Content-Type': self.content_type,
             'User-Agent': self.USER_AGENT,
         }
         
@@ -51,7 +57,17 @@ class HTTPClient:
     def __init__(self, client_id: str, client_secret: str) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.session = aiohttp.ClientSession()
+
+    def __del__(self):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.session.close())
+            else:
+                loop.run_until_complete(self.session.close())
+        except:
+            pass
 
     def generate_auth_url(self) -> Tuple[str, str]:
         code_challenge = get_new_code_verifier()
@@ -62,9 +78,6 @@ class HTTPClient:
         headers = route.headers
         method = route.method
         url = route.url
-
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
         
         for tries in range(5):
             try:
@@ -76,7 +89,6 @@ class HTTPClient:
                     
                     # An error occurred
                     error, message = data['error'], data['message']
-                    
                     if response.status == 400:
                         raise BadRequest(response, error, message)
                     elif response.status == 401:
@@ -100,6 +112,7 @@ class HTTPClient:
             'POST',
             '/oauth2/token',
             version=1,
+            content_type='application/x-www-form-urlencoded',
             client_id=self.client_id,
             client_secret=self.client_secret,
             code=auth_code,
@@ -107,8 +120,12 @@ class HTTPClient:
             grant_type='authorization_code'
         )
 
-        data = await self.request(route)
-        return data['access_token'], data['refresh_token']
+        # TODO: Figure out why the self.request method isn't working with this
+        # Something about the grant_type not being right
+        # Do this after all features are sorted
+        async with self.session.post(route.url, data=route.parameters) as response:
+            data = await response.json()
+            return data['access_token'], data['refresh_token']
 
     async def get_anime(self, access_token: str, query: str, limit: int = 100, offset: int = 0):
         route = Route(
