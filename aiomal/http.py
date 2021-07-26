@@ -1,4 +1,5 @@
 import asyncio
+from re import sub
 
 from typing import Any, ClassVar, Dict, Optional, Tuple
 from urllib.parse import urljoin, urlencode
@@ -19,7 +20,7 @@ class Route:
         self.path = path
         self.version = version
         self.content_type = content_type
-        self.parameters = parameters
+        self.parameters = {k: v for k, v in parameters.items() if v is not None}
         
     @property
     def url(self) -> str:
@@ -244,16 +245,24 @@ class HTTPClient:
 
         return await self.request(route)
 
-    async def get_forum_topics(self, access_token: str):
+    async def get_forum_topics(self, access_token: str, board_id: Optional[int] = None, subboard_id: Optional[int] = None, limit: int = 100, offset: int = 0, sort: str = 'recent', q: Optional[str] = None, topic_user_name: Optional[str] = None, user_name: Optional[str] = None):
         route = Route(
             'GET',
             '/forum/topics',
-            access_token=access_token
+            access_token=access_token,
+            board_id=board_id,
+            subboard_id=subboard_id,
+            limit=min(limit, 100),
+            offset=offset,
+            sort=sort,
+            q=q,
+            topic_user_name=topic_user_name,
+            user_name=user_name
         )
 
         return await self.request(route)
 
-    async def get_manga_list(self, access_token: str, query: str, limit: int = 100, offset: int = 0):
+    async def get_manga(self, access_token: str, query: str, limit: int = 100, offset: int = 0):
         route = Route(
             'GET',
             '/manga',

@@ -113,7 +113,7 @@ class MangaForList(Media):
         super().__init__(data)
         self.num_volumes: int = data.get('num_volumes')
         self.num_chapters: int = data.get('num_chapters')
-        self.authors: List[Author] = [Author(author) for author in data.get('authors')]
+        self.authors: List[Author] = [Author(author) for author in data.get('authors', [])]
 
 
 class MangaDetails(MangaForList, MediaDetails):
