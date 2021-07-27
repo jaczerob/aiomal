@@ -195,7 +195,7 @@ class ClientUser:
         else:
             return True
 
-    async def get_user_anime_list(self, user_name: str = '@me', status: Optional[str] = None, sort: str = 'list_score', limit: int = 100, offset: int = 0) -> List[Tuple[AnimeForList, MyListStatus]]:
+    async def get_user_anime_list(self, user_name: str = '@me', status: Optional[str] = None, sort: str = 'list_score', limit: int = 100, offset: int = 0) -> List[AnimeForList]:
         """Returns the given user's anime list
         
         Parameters
@@ -219,8 +219,8 @@ class ClientUser:
         
         Returns
         --------
-        List[Tuple[:class:`AnimeForList`, :class:`MyListStatus`]]
-            A list of each anime and their status
+        List[:class:`AnimeForList`]
+            A list of each anime in the user's list
         """
         data = await self._http.get_user_anime_list(self._access_token, user_name, status, sort, limit, offset)
 
@@ -448,13 +448,11 @@ class ClientUser:
         
         Returnshmm
         --------
-        List[Tuple[:class:`MangaForList`, :class:`MyListStatus`]]
-            A list of each anime and their status
+        List[:class:`MangaForList`]
+            A list of each manga in the user's list
         """
         data = await self._http.get_user_manga_list(self._access_token, user_name, status, sort, limit, offset)
-
-        # TODO: make a cleaner type for this
-        user_manga_list = [MangaForList(manga['node'], MyListStatus(manga['list_status'])) for manga in data['data']]
+        user_manga_list = [MangaForList(manga['node']) for manga in data['data']]
         return user_manga_list
 
     async def get_user_information(self, user_name: str = '@me') -> User:
