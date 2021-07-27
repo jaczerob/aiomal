@@ -267,7 +267,7 @@ class HTTPClient:
             'GET',
             '/manga',
             access_token=access_token,
-            query=query,
+            q=query,
             limit=min(100, limit),
             fields=self.MANGA_FIELDS
         )

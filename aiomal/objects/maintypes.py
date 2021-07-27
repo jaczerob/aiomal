@@ -18,6 +18,19 @@ __all__ = [
 
 
 class User(Object):
+    """This class represents a MAL User
+    
+    Parameters
+    -----------
+    data: Dict[:class:`str`, Any]
+        The JSON data returned from calling the API
+
+    Attributes
+    -----------
+    id: :class:`int`
+    
+    
+    """
     __slots__ = [
         'id', 
         'name', 
@@ -88,7 +101,7 @@ class AnimeForList(Media):
         self.source: str = data.get('source')
         self.average_episode_duration: int = data.get('average_episode_duration')
         self.rating: int = data.get('rating')
-        self.studios: List[Studio] = [Studio(studio) for studio in data.get('studios') or []]
+        self.studios: List[Studio] = [Studio(studio) for studio in data.get('studios', [])]
 
 
 class AnimeDetails(AnimeForList, MediaDetails):
@@ -139,7 +152,7 @@ class ForumTopicData(Object):
         super().__init__(data)
         self.title: str = data.get('title')
         self.posts: List[ForumTopicPost] = [ForumTopicPost(ftp) for ftp in data.get('posts')]
-        self.poll: List[ForumTopicPoll] = [ForumTopicPoll(ftp) for ftp in data.get('poll') or []]
+        self.poll: List[ForumTopicPoll] = [ForumTopicPoll(ftp) for ftp in data.get('poll', [])]
 
 
 class ForumTopicsData(Object):

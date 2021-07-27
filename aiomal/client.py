@@ -56,7 +56,7 @@ class ClientUser:
         anime = AnimeDetails(data)
         return anime
 
-    async def get_anime_ranking(self, ranking_type: str, limit: int = 100, offset: int = 0) -> List[AnimeForList]:
+    async def get_anime_ranking(self, ranking_type: str = 'all', limit: int = 100, offset: int = 0) -> List[AnimeForList]:
         """Gets the ranking from [1 + offset, offset + limit]
         
         Parameters
@@ -77,7 +77,7 @@ class ClientUser:
             The ranking by the given ranking type
         """
         data = await self._http.get_anime_ranking(self._access_token, ranking_type, limit, offset)
-        anime = [AnimeForList(a) for a in data['data']]
+        anime = [AnimeForList(a['node']) for a in data['data']]
         return anime
 
     async def get_seasonal_anime(self, year: int, season: str, sort: str = 'anime_score', limit: int = 100, offset: int = 0) -> List[AnimeForList]:
@@ -108,7 +108,7 @@ class ClientUser:
             A list of the anime in the given season and year
         """
         data = await self._http.get_seasonal_anime(self._access_token, year, season, sort, limit, offset)
-        anime = [AnimeForList(a) for a in data['data']]
+        anime = [AnimeForList(a['node']) for a in data['data']]
         return anime
 
     async def get_suggested_anime(self, limit: int = 100, offset: int = 0) -> List[AnimeForList]:
@@ -130,7 +130,7 @@ class ClientUser:
             A list of suggested anime for the user
         """
         data = await self._http.get_suggested_anime(self._access_token, limit, offset)
-        anime = [AnimeForList(a) for a in data['data']]
+        anime = [AnimeForList(a['node']) for a in data['data']]
         return anime
     
     async def update_anime_list_status(self, anime_id: int, **kwargs) -> MyListStatus:
@@ -223,9 +223,9 @@ class ClientUser:
             A list of each anime and their status
         """
         data = await self._http.get_user_anime_list(self._access_token, user_name, status, sort, limit, offset)
-        
+
         # TODO: make a cleaner type for this
-        user_anime_list = [(AnimeForList(anime['node']), MyListStatus(anime['list_status'])) for anime in data['data']]
+        user_anime_list = [AnimeForList(anime['node']) for anime in data['data']]
         return user_anime_list
 
     async def get_forum_boards(self) -> List[ForumCategory]:
@@ -254,7 +254,7 @@ class ClientUser:
             The forum topic data containing every post and poll in a forum topic
         """
         data = await self._http.get_forum_topic_detail(self._access_token, topic_id)
-        forum_topics_detail = [ForumTopicData(ftd) for ftd in data['data']]
+        forum_topics_detail = ForumTopicData(data['data'])
         return forum_topics_detail
 
     async def get_forum_topics(self, board_id: Optional[int] = None, subboard_id: Optional[int] = None, limit: int = 100, offset: int = 0, sort: str = 'recent', q: Optional[str] = None, topic_user_name: Optional[str] = None, user_name: Optional[str] = None) -> List[ForumTopicsData]:
@@ -357,7 +357,7 @@ class ClientUser:
             The ranking by the given ranking type
         """
         data = await self._http.get_manga_ranking(self._access_token, ranking_type, limit, offset)
-        manga = [MangaForList(m) for m in data['data']]
+        manga = [MangaForList(m['node']) for m in data['data']]
         return manga
 
     async def update_manga_list_status(self, manga_id: int, **kwargs) -> MyListStatus:
