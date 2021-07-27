@@ -455,7 +455,7 @@ class ClientUser:
         user_manga_list = [MangaForList(manga['node']) for manga in data['data']]
         return user_manga_list
 
-    async def get_user_information(self, user_name: str = '@me') -> User:
+    async def get_user_information(self) -> User:
         """Gets the user's information
         
         Parameters
@@ -468,7 +468,7 @@ class ClientUser:
         :class:`User`
             The user's information
         """
-        data = await self._http.get_user_information(self._access_token, user_name)
+        data = await self._http.get_user_information(self._access_token)
         user = User(data)
         return user
 

@@ -335,10 +335,10 @@ class HTTPClient:
 
         return await self.request(route)
 
-    async def get_user_information(self, access_token: str, user_name: str = '@me'):
+    async def get_user_information(self, access_token: str):
         route = Route(
-            'DELETE',
-            f'/user/{user_name}',
+            'GET',
+            '/users/@me',
             access_token=access_token,
             fields=self.USER_FIELDS
         )
